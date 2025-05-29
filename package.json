@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "predeploy": "npm run build && rm -rf node_modules/.cache/gh-pages",
-    "deploy": "gh-pages -d dist"
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist -b main -r https://github.com/jefflin98/jefflin98.github.io.git --add"
   },
   "dependencies": {
     "lucide-react": "^0.511.0",
@@ -21,7 +21,7 @@
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.5.0",
     "autoprefixer": "^10.4.17",
-    "gh-pages": "^6.0.0",
+    "gh-pages": "^6.3.0",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.3",
     "typescript": "^5.4.5",

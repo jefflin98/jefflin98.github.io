@@ -3,7 +3,7 @@ node_modules/
 .env
 
 # production
-dist/
+# dist/
 build/
 
 # misc
