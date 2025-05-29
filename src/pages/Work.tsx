@@ -131,8 +131,8 @@ function ExperienceList({
 export default function Work() {
   const [hover, setHover] = React.useState<null | "research" | "engineer">(null);
 
-  const researchMasked = hover === "engineer";
-  const engineerMasked = hover === "research" || hover === null;
+  const researchMasked = hover === "engineer" || hover === null;
+  const engineerMasked = hover === "research";
 
   return (
     <div className="w-full flex justify-center">
@@ -143,13 +143,13 @@ export default function Work() {
         {/* Hover overlays */}
         <div
           className="absolute left-0 top-0 h-full w-1/2 z-20"
-          onMouseEnter={() => setHover("research")}
+          onMouseEnter={() => setHover("engineer")}
           onMouseLeave={() => setHover(null)}
           style={{ pointerEvents: "auto" }}
         />
         <div
           className="absolute right-0 top-0 h-full w-1/2 z-20"
-          onMouseEnter={() => setHover("engineer")}
+          onMouseEnter={() => setHover("research")}
           onMouseLeave={() => setHover(null)}
           style={{ pointerEvents: "auto" }}
         />
@@ -163,35 +163,10 @@ export default function Work() {
               -mr-15
               transition-all duration-300
               ${
-                hover === "engineer"
-                  ? "-translate-x-8 z-0"
-                  : hover === "research"
-                  ? "translate-x-8 z-30 scale-105 shadow-2xl"
-                  : "z-10"
-              }
-            `}
-            style={{ minWidth: 0 }}
-          >
-            <div
-              className={`font-bold text-xl mb-6 text-center select-none transition-all duration-300 ${
-                researchMasked ? "opacity-30 grayscale" : "text-accent opacity-100"
-              }`}
-            >
-              Research
-            </div>
-            <ExperienceList items={research} masked={researchMasked} />
-          </div>
-          {/* Engineer side */}
-          <div
-            className={`
-              w-[56%] 
-              -ml-15 
-              transition-all duration-300
-              ${
                 hover === "research"
-                  ? "translate-x-8 z-0"
+                  ? "-translate-x-8 z-0"
                   : hover === "engineer"
-                  ? "-translate-x-8 z-30 scale-105 shadow-2xl"
+                  ? "translate-x-8 z-30 scale-105 shadow-2xl"
                   : "z-10"
               }
             `}
@@ -205,6 +180,31 @@ export default function Work() {
               Engineer
             </div>
             <ExperienceList items={engineer} masked={engineerMasked} />
+          </div>
+          {/* Engineer side */}
+          <div
+            className={`
+              w-[56%] 
+              -ml-15 
+              transition-all duration-300
+              ${
+                hover === "engineer"
+                  ? "translate-x-8 z-0"
+                  : hover === "research"
+                  ? "-translate-x-8 z-30 scale-105 shadow-2xl"
+                  : "z-10"
+              }
+            `}
+            style={{ minWidth: 0 }}
+          >
+            <div
+              className={`font-bold text-xl mb-6 text-center select-none transition-all duration-300 ${
+                researchMasked ? "opacity-30 grayscale" : "text-accent opacity-100"
+              }`}
+            >
+              Research
+            </div>
+            <ExperienceList items={research} masked={researchMasked} />
           </div>
         </div>
       </section>

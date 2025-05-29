@@ -1,25 +1,46 @@
 import { useNavigate } from "react-router-dom";
+import MiniGame from "../components/MiniGame";
+import { Mail, Linkedin } from "lucide-react"; // or use Heroicons: import { EnvelopeIcon, ... } from '@heroicons/react/24/outline'
 
 export default function Home() {
   const navigate = useNavigate();
 
   return (
-    <section className="max-w-4xl mx-auto pt-10 px-10 flex-col justify-center min-h-screen">
-      <h1 className="text-5xl md:text-7xl font-bold text-fg mb-6">Jeff Lin</h1>
+    <section className="max-w-4xl mx-auto px-10 flex-col justify-center min-h-screen">
+      <MiniGame />
+      <h2 className="text-5xl md:text-7xl font-bold text-fg mb-6">Jeff Lin</h2>
       <p className="text-lg text-muted mb-4">
-        Software Development Engineer · HCI Researcher · Seattle, WA 
+        Software Development Engineer · HCI Researcher · Seattle, WA
       </p>
 
       <p className="text-lg text-muted mb-8">
         Passionate about building human-centered computing systems.
       </p>
       
-      <button
-        onClick={() => navigate("/contact")}
-        className="inline-block text-accent border border-accent px-6 py-2 rounded-full hover:bg-accent hover:text-bg transition-colors font-semibold"
-      >
-        Contact Me
-      </button>
+      <ul className="flex flex-row justify-center gap-4 mb-4">
+        <li>
+          <a
+            href="mailto:tl3097@columbia.edu"
+            className="inline-flex items-center gap-2 bg-neutral-900 hover:bg-accent/20 text-accent hover:text-fg px-4 py-2 rounded-lg transition shadow group"
+          >
+            <Mail className="w-5 h-5 group-hover:text-accent" />
+            <span>Email</span>
+            <span className="ml-2 text-sm text-muted group-hover:text-fg">tl3097@columbia.edu</span>
+          </a>
+        </li>
+        <li>
+          <a
+            href="https://www.linkedin.com/in/tl3097"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-neutral-900 hover:bg-accent/20 text-accent hover:text-fg px-4 py-2 rounded-lg transition shadow group"
+          >
+            <Linkedin className="w-5 h-5 group-hover:text-accent" />
+            <span>LinkedIn</span>
+            <span className="ml-2 text-sm text-muted group-hover:text-fg">linkedin.com/in/tl3097</span>
+          </a>
+        </li>
+      </ul>
     </section>
   );
 }
