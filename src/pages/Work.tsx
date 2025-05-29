@@ -120,7 +120,7 @@ function ExperienceList({
             ))}
           </ul>
           {idx !== items.length - 1 && (
-            <hr className="border-t-2 border-muted mt-4" />
+            <hr className="border-t-2 border-muted mt-6 mb-8" />
           )}
         </div>
       ))}

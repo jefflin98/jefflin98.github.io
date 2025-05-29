@@ -124,7 +124,7 @@ function getObjects(): GameObject[] {
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = "#fff";
       ctx.beginPath();
-      ctx.ellipse(baseX + 60, baseY + 40, 38, 20, 0, 0, Math.PI * 2);
+      ctx.ellipse(baseX + 60, baseY + 40, 38, 20, 0, 1, Math.PI * 2);
       ctx.ellipse(baseX + 100, baseY + 38, 32, 19, 0, 0, Math.PI * 2);
       ctx.ellipse(baseX + 30, baseY + 54, 21, 14, 0, 0, Math.PI * 2);
       ctx.ellipse(baseX + 85, baseY + 60, 37, 20, 0, 0, Math.PI * 2);
@@ -187,38 +187,29 @@ function getObjects(): GameObject[] {
     }
   };
 
-  const smartphone: GameObject = {
-    type: "smartphone",
-    x: Math.floor(WORLD_SIZE) + 5.05,
-    y: labDeskY - 4.5,
-    width: 0.8,
-    height: 1.6,
-    draw: (ctx, camX) => {
-      const sx = (smartphone.x - camX) * TILE_SIZE;
-      const sy = smartphone.y * TILE_SIZE;
-      ctx.save();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#222";
-      ctx.beginPath();
-      ctx.roundRect(sx, sy, smartphone.width * TILE_SIZE, smartphone.height * TILE_SIZE, 7);
-      ctx.fillStyle = "#e9e9ea";
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#0a1a2f";
-      ctx.fillRect(sx + 3, sy + 8, smartphone.width * TILE_SIZE - 6, smartphone.height * TILE_SIZE - 18);
-      ctx.fillStyle = "#bbb";
-      ctx.fillRect(sx + smartphone.width * TILE_SIZE / 2 - 8, sy + smartphone.height * TILE_SIZE - 40, 16, 4);
-      ctx.beginPath();
-      ctx.arc(sx + smartphone.width * TILE_SIZE - 6, sy + 12, 8, 0, 2 * Math.PI);
-      ctx.fillStyle = "#e63946";
-      ctx.fill();
-      ctx.font = "bold 12px sans-serif";
-      ctx.fillStyle = "#fff";
-      ctx.textAlign = "center";
-      ctx.fillText("1", sx + smartphone.width * TILE_SIZE - 6, sy + 16);
-      ctx.restore();
-    }
-  };
+const smartphone: GameObject = {
+  type: "smartphone",
+  x: Math.floor(WORLD_SIZE) + 5.05,
+  y: labDeskY - 4.5,
+  width: 0.8,
+  height: 1.6,
+  draw: (ctx, camX) => {
+    const sx = (smartphone.x - camX) * TILE_SIZE;
+    const sy = smartphone.y * TILE_SIZE;
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#222";
+    ctx.beginPath();
+    ctx.roundRect(sx, sy, smartphone.width * TILE_SIZE, smartphone.height * TILE_SIZE, 7);
+    ctx.fillStyle = "#e9e9ea";
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#0a1a2f";
+    ctx.fillRect(sx + 3, sy + 8, smartphone.width * TILE_SIZE - 6, smartphone.height * TILE_SIZE - 18);
+
+    ctx.restore();
+  }
+};
 
   const pianoY = LEVEL_HEIGHT - 2.3;
   const piano: GameObject = {
@@ -388,8 +379,6 @@ function getCollisionY(mario: any, objects: GameObject[], tryX: number, tryY: nu
 
 function isOnDesk(mario: any, desk: GameObject) {
   return (
-    mario.y + mario.height > desk.y - 0.15 &&
-    mario.y + mario.height < desk.y + desk.height + 0.25 &&
     mario.x + mario.width > desk.x + 0.1 &&
     mario.x < desk.x + desk.width - 0.1
   );
@@ -398,10 +387,8 @@ function isOnDesk(mario: any, desk: GameObject) {
 export default function MiniGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>();
-
-  // 1. Spawn Mario a bit right (not touching desk)
   const mario = useRef({
-    x: 4.2, // changed from 3.0
+    x: 4.2,
     y: LEVEL_HEIGHT - 2,
     vx: 0,
     vy: 0,
@@ -412,17 +399,17 @@ export default function MiniGame() {
     mountainY: 0,
     mountainSlope: 0,
   });
-
   const keys = useRef<{ [key: string]: boolean }>({});
   const jumpHeld = useRef(false);
   const objectsRef = useRef<GameObject[]>(getObjects());
-  const snowboardState = useRef<"side" | "bottom" | null>(null);
+  const snowboardState = useRef<"side" | "bottom" | "up" | null>(null);
 
-  // Overlay state
   const [deskOverlay, setDeskOverlay] = useState<"eng" | "res" | null>(null);
-
-  // 2. Instruction overlay state
   const [showInstructions, setShowInstructions] = useState(true);
+  const [showEngineerExperience, setShowEngineerExperience] = useState(false);
+  const [showResearcherExperience, setShowResearcherExperience] = useState(false);
+  const [showSnowboarder, setShowSnowboarder] = useState(false);
+  const [showMusic, setShowMusic] = useState(false);
 
   function handleDeskButtonClick(which: "eng" | "res") {
     if (which === "eng") {
@@ -440,6 +427,34 @@ export default function MiniGame() {
 
     const deskTech = objectsRef.current.find(o => o.type === "desk" && o.x < 5)!;
     const deskLab = objectsRef.current.find(o => o.type === "desk" && o.x > 10)!;
+    const computerOnDesk = objectsRef.current.find(o => o.type === "computer")!;
+    const cloud = objectsRef.current.find(o => o.type === "cloud");
+    // Find the computer-in-cloud "screen" position
+    // We'll visually connect: (computer on desk) <-> (computer in cloud)
+
+    // Helper: get computer "screen" center
+    function getComputerScreen(obj: GameObject, camX: number) {
+      if (obj.type === "computer") {
+        // Desk computer
+        const sx = (obj.x - camX) * TILE_SIZE;
+        const sy = obj.y * TILE_SIZE;
+        return {
+          x: sx + obj.width * TILE_SIZE / 2,
+          y: sy + obj.height * TILE_SIZE / 2,
+        };
+      }
+      if (obj.type === "cloud") {
+        // Computer in cloud is drawn at baseX+60, baseY+24
+        // width: 0.82 * TILE_SIZE, height: 0.63 * TILE_SIZE (as in drawBigComputer)
+        const sx = (obj.x - camX) * TILE_SIZE + 60;
+        const sy = obj.y * TILE_SIZE + 24;
+        return {
+          x: sx + 0.82 * TILE_SIZE / 2,
+          y: sy + 0.63 * TILE_SIZE / 2,
+        };
+      }
+      return { x: 0, y: 0 };
+    }
 
     function getWorld(x: number) {
       const worldIdx = Math.floor(x / WORLD_SIZE);
@@ -451,21 +466,7 @@ export default function MiniGame() {
       if (!obj) return false;
       const mountainStart = obj.x;
       const mountainEnd = obj.x + obj.width;
-      const mountainPeakX = (mountainStart + mountainEnd) / 2;
-      const mountainPeakY = 3.5;
-      const mountainBaseY = 8.5;
-      if (mx < mountainStart || mx > mountainEnd) return false;
-      let surfaceY, slope;
-      if (mx <= mountainPeakX) {
-        slope = (mountainPeakY - mountainBaseY) / (mountainPeakX - mountainStart);
-        surfaceY = mountainBaseY + slope * (mx - mountainStart);
-      } else {
-        slope = (mountainBaseY - mountainPeakY) / (mountainEnd - mountainPeakX);
-        surfaceY = mountainPeakY + slope * (mx - mountainPeakX);
-      }
-      mario.current.mountainY = surfaceY;
-      mario.current.mountainSlope = slope;
-      return Math.abs(my + mario.current.height - surfaceY) < 0.24;
+      return mario.current.x < mountainEnd &&  mario.current.x > mountainStart;
     }
 
     function draw() {
@@ -508,13 +509,100 @@ export default function MiniGame() {
         const sx = (mx - camX) * TILE_SIZE;
         const sy = my * TILE_SIZE;
         if (snowboardState.current === "side") {
-          drawSnowboard(ctx, sx - 12, sy + mario.current.height * TILE_SIZE / 2, true);
+          drawSnowboard(ctx, sx - 6, sy + mario.current.height * TILE_SIZE / 2, true);
         } else if (snowboardState.current === "bottom") {
           drawSnowboard(ctx, sx + mario.current.width * TILE_SIZE / 2, sy + mario.current.height * TILE_SIZE + 2, false);
+        } else if (snowboardState.current === "up") {
+          drawSnowboard(ctx, sx + mario.current.width * TILE_SIZE / 2, sy + mario.current.height * TILE_SIZE - 10, false);
         }
       }
 
-      ctx.fillStyle = "#888"; // grey Mario
+      // --- Draw streaming lines if Mario is on office desk ---
+      if (isOnDesk(mario.current, deskTech) && cloud) {
+        // Get desk computer and cloud computer screen center in canvas coordinates
+        const deskPos = getComputerScreen(computerOnDesk, camX);
+        const cloudPos = getComputerScreen(cloud, camX);
+
+        // Draw dash-dotted red lines (bi-directional)
+        ctx.save();
+        ctx.strokeStyle = "#e74c3c";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([10, 8]); // dash, gap, dot, gap
+
+        // Animate dash offset using performance.now()
+        const dashAnimSpeed = 60; // smaller=faster (ms per px of offset)
+        const now = performance.now();
+        const dashOffset = (now / dashAnimSpeed) % 18; // 18 = sum of [10,8] below
+
+        // 1. Desk -> Cloud (moving dashes)
+        ctx.save();
+        ctx.strokeStyle = "#e74c3c";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([10, 8]);
+        ctx.lineDashOffset = -dashOffset;
+        ctx.beginPath();
+        ctx.moveTo(deskPos.x, deskPos.y - 10);
+        ctx.lineTo(cloudPos.x, cloudPos.y + 30);
+        ctx.stroke();
+        ctx.restore();
+
+        // 2. Cloud -> Desk (moving dashes, opposite direction)
+        ctx.save();
+        ctx.strokeStyle = "#e74c3c";
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([10, 8]);
+        ctx.lineDashOffset = -dashOffset; // reverse direction by flipping the sign
+        ctx.beginPath();
+        ctx.moveTo(cloudPos.x + 10, cloudPos.y + 30);
+        ctx.lineTo(deskPos.x + 10, deskPos.y - 10);
+        ctx.stroke();
+        ctx.restore();
+
+        // setShowEngineerExperience
+        setShowEngineerExperience(true);
+
+        ctx.restore();
+      } else {
+        setShowEngineerExperience(false);
+      }
+
+      // Draw red dot if needed
+      if (isOnDesk(mario.current, deskLab)) {
+        const smartphone = objectsRef.current.find(o => o.type === "smartphone")!;
+        const sx = (smartphone.x - camX) * TILE_SIZE;
+        const sy = smartphone.y * TILE_SIZE;
+        const t = performance.now();
+        const shake = Math.sin(t * 0.01);
+        ctx.fillStyle = "#bbb";
+        ctx.fillRect(sx + smartphone.width * TILE_SIZE / 2 - 8, sy + smartphone.height * TILE_SIZE - 40, 16, 4);
+        ctx.beginPath();
+        ctx.arc(
+          sx + smartphone.width * TILE_SIZE - 6 + shake, // <--- Add shake here
+          sy + 12,
+          8,
+          0,
+          2 * Math.PI
+        );
+        ctx.fillStyle = "#e63946";
+        ctx.fill();
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillStyle = "#fff";
+        ctx.textAlign = "center";
+        ctx.fillText("1", sx + smartphone.width * TILE_SIZE - 6 + shake, sy + 16);
+        setShowResearcherExperience(true);
+      } else {
+        setShowResearcherExperience(false);
+      }
+
+      // Music
+      if (worldTheme.name == "Music Studio") {
+        setShowMusic(true);
+      } else {
+        setShowMusic(false);
+      }
+      
+      // Draw Mario (grey)
+      ctx.fillStyle = "#888";
       ctx.fillRect(
         (mario.current.x - camX) * TILE_SIZE,
         mario.current.y * TILE_SIZE,
@@ -532,6 +620,7 @@ export default function MiniGame() {
         let speed = 0;
         let left = keys.current["a"] || keys.current["A"];
         let right = keys.current["d"] || keys.current["D"];
+        let up = keys.current["w"] || keys.current["W"];
 
         const isLeftOfPeak = centerX <= (SNOW_START + SNOW_END) / 2;
         const isRightOfPeak = !isLeftOfPeak;
@@ -542,46 +631,22 @@ export default function MiniGame() {
           } else {
             snowboardState.current = "side";
           }
-          speed = -0.08;
         } else if (right && !left) {
           if (isRightOfPeak) {
             snowboardState.current = "bottom";
           } else {
             snowboardState.current = "side";
           }
-          speed = 0.08;
+        } else if (up) {
+          snowboardState.current = "up";
         } else {
-          snowboardState.current = null;
+          snowboardState.current = "bottom";
         }
-
-        const obj = objectsRef.current.find(o => o.type === "mountain");
-        if (obj && speed !== 0) {
-          const nextX = mario.current.x + speed;
-          const nextCenterX = nextX + mario.current.width / 2;
-          if (nextCenterX >= obj.x && nextCenterX <= obj.x + obj.width) {
-            const mountainStart = obj.x;
-            const mountainEnd = obj.x + obj.width;
-            const mountainPeakX = (mountainStart + mountainEnd) / 2;
-            const mountainPeakY = 3.5;
-            const mountainBaseY = 8.5;
-            let surfaceY;
-            if (nextCenterX <= mountainPeakX) {
-              const slope = (mountainPeakY - mountainBaseY) / (mountainPeakX - mountainStart);
-              surfaceY = mountainBaseY + slope * (nextCenterX - mountainStart);
-            } else {
-              const slope = (mountainBaseY - mountainPeakY) / (mountainEnd - mountainPeakX);
-              surfaceY = mountainPeakY + slope * (nextCenterX - mountainPeakX);
-            }
-            mario.current.x = Math.max(obj.x - mario.current.width / 2, Math.min(obj.x + obj.width - mario.current.width / 2, nextX));
-            mario.current.y = surfaceY - mario.current.height;
-            mario.current.vy = 0;
-            mario.current.onGround = true;
-            return;
-          }
-        }
+        setShowSnowboarder(true);
       } else {
         mario.current.onMountain = false;
         snowboardState.current = null;
+        setShowSnowboarder(false);
       }
 
       if (keys.current["a"] || keys.current["A"]) mario.current.vx = -0.12;
@@ -657,8 +722,6 @@ export default function MiniGame() {
 
     function onKeyDown(e: KeyboardEvent) {
       keys.current[e.key] = true;
-
-      // Hide instruction text on first movement
       if (
         showInstructions &&
         (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" ||
@@ -680,7 +743,7 @@ export default function MiniGame() {
     };
   }, [showInstructions]);
 
-  // Minimal (unstyled) overlay, just text and icon, transparent background, no border, pointer
+  // ... all overlay code unchanged ...
   const canvasWidth = TILE_SIZE * VIEWPORT_WIDTH;
   const overlayBaseStyle: React.CSSProperties = {
     position: "absolute",
@@ -704,7 +767,6 @@ export default function MiniGame() {
     lineHeight: 1.6,
   };
 
-  // Instruction overlay
   const instructionStyle: React.CSSProperties = {
     position: "absolute",
     left: "50%",
@@ -734,6 +796,26 @@ export default function MiniGame() {
       {showInstructions && (
         <div style={instructionStyle}>
           Move or jump using "WASD" to explore my world!
+        </div>
+      )}
+      {showEngineerExperience && (
+        <div style={instructionStyle}>
+          💻 AWS Software Engineer 💻 
+        </div>
+      )}
+      {showResearcherExperience && (
+        <div style={instructionStyle}>
+          📋 HCI Researcher 📋
+        </div>
+      )}
+      {showSnowboarder && (
+        <div style={instructionStyle}>
+          🏂 Snowboard Lover 🏂
+        </div>
+      )}
+      {showMusic && (
+        <div style={instructionStyle}>
+          🎵 Music Lover 🎵
         </div>
       )}
       {deskOverlay === "eng" && (

@@ -8,13 +8,17 @@ export default function Home() {
   return (
     <section className="max-w-4xl mx-auto px-10 flex-col justify-center min-h-screen">
       <MiniGame />
-      <h2 className="text-5xl md:text-7xl font-bold text-fg mb-6">Jeff Lin</h2>
-      <p className="text-lg text-muted mb-4">
-        Software Development Engineer · HCI Researcher · Seattle, WA
+      <h2 className="text-5xl md:text-7xl font-bold text-fg mt-10 mb-10">Jeff Lin</h2>
+      <p className="text-lg mb-4">
+        Software Engineer · HCI Researcher · Seattle, WA
       </p>
 
-      <p className="text-lg text-muted mb-8">
-        Passionate about building human-centered computing systems.
+      <p className="text-lg mb-4">
+        Passionate about building human-centered computing systems!
+      </p>
+
+      <p className="text-lg mb-8">
+        Enjoy snowboarding and music writing in my free time!
       </p>
       
       <ul className="flex flex-row justify-center gap-4 mb-4">
