@@ -82,38 +82,38 @@ function getObjects(): GameObject[] {
   const techDeskY = LEVEL_HEIGHT - 2.1;
   const deskTech: GameObject = {
     type: "desk",
-    x: 0.3,
+    x: 1,
     y: techDeskY,
     width: 3,
     height: 1.0,
     isSolid: (px, py) =>
-      px >= 0.3 && px <= 2.8 && Math.abs(py - (techDeskY + 1.0)) < 0.19,
+      px >= 0.7 && px <= 4.1 && Math.abs(py - (techDeskY + 1.0)) < 0.19,
     draw: (ctx, camX) => {
       const sx = (deskTech.x - camX) * TILE_SIZE;
       const sy = deskTech.y * TILE_SIZE;
       ctx.save();
       ctx.fillStyle = "#a0522d";
-      ctx.fillRect(sx, sy, deskTech.width * TILE_SIZE, deskTech.height * TILE_SIZE);
+      ctx.fillRect(sx, sy, deskTech.width * TILE_SIZE + 22, deskTech.height * TILE_SIZE);
       ctx.fillStyle = "#6c4224";
       ctx.fillRect(sx + 2, sy + deskTech.height * TILE_SIZE, 10, 18);
-      ctx.fillRect(sx + deskTech.width * TILE_SIZE - 12, sy + deskTech.height * TILE_SIZE, 10, 18);
+      ctx.fillRect(sx + deskTech.width * TILE_SIZE +10, sy + deskTech.height * TILE_SIZE, 10, 18);
       ctx.restore();
     }
   };
   const computer: GameObject = {
     type: "computer",
-    x: 1.45,
+    x: 2,
     y: techDeskY - 0.82,
     width: 0.82,
     height: 0.63,
     draw: (ctx, camX) => {
-      drawBigComputer(ctx, (1.45 - camX) * TILE_SIZE, (techDeskY - 0.82) * TILE_SIZE);
+      drawBigComputer(ctx, (2.2 - camX) * TILE_SIZE, (techDeskY - 0.82) * TILE_SIZE);
     }
   };
 
   const cloud: GameObject = {
     type: "cloud",
-    x: 0.1,
+    x: 0.5,
     y: 2.6,
     width: 6.2,
     height: 3.6,
@@ -164,7 +164,7 @@ function getObjects(): GameObject[] {
 
   const paper: GameObject = {
     type: "paper",
-    x: Math.floor(WORLD_SIZE) + 4.7,
+    x: Math.floor(WORLD_SIZE) + 4.3,
     y: labDeskY - 0.8,
     width: 1,
     height: 1.2,
@@ -189,7 +189,7 @@ function getObjects(): GameObject[] {
 
 const smartphone: GameObject = {
   type: "smartphone",
-  x: Math.floor(WORLD_SIZE) + 5.05,
+  x: Math.floor(WORLD_SIZE) + 4.4,
   y: labDeskY - 4.5,
   width: 0.8,
   height: 1.6,
@@ -341,7 +341,7 @@ function drawSnowboard(ctx: CanvasRenderingContext2D, x: number, y: number, vert
   ctx.strokeStyle = "#18386B";
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.ellipse(0, 0, 18, 6.5, 0, 0, 2 * Math.PI);
+  ctx.ellipse(-7, 5, 24, 6.5, 0, 0, 2 * Math.PI);
   ctx.fill();
   ctx.stroke();
   ctx.restore();
@@ -380,7 +380,7 @@ function getCollisionY(mario: any, objects: GameObject[], tryX: number, tryY: nu
 function isOnDesk(mario: any, desk: GameObject) {
   return (
     mario.x + mario.width > desk.x + 0.1 &&
-    mario.x < desk.x + desk.width - 0.1
+    mario.x < desk.x + desk.width + 1
   );
 }
 
@@ -388,7 +388,7 @@ export default function MiniGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>();
   const mario = useRef({
-    x: 4.2,
+    x: 8,
     y: LEVEL_HEIGHT - 2,
     vx: 0,
     vy: 0,
@@ -466,7 +466,7 @@ export default function MiniGame() {
       if (!obj) return false;
       const mountainStart = obj.x;
       const mountainEnd = obj.x + obj.width;
-      return mario.current.x < mountainEnd &&  mario.current.x > mountainStart;
+      return mario.current.x < mountainEnd &&  mario.current.x > mountainStart && mario.current.y < 8.0;
     }
 
     function draw() {
@@ -499,6 +499,8 @@ export default function MiniGame() {
       }
 
       for (const obj of objectsRef.current) {
+        if (obj.type === "cloud"  && !isOnDesk(mario.current, deskTech)) continue;
+        if (obj.type === "smartphone" && !isOnDesk(mario.current, deskLab)) continue;
         obj.draw(ctx, camX);
       }
 
@@ -541,7 +543,7 @@ export default function MiniGame() {
         ctx.setLineDash([10, 8]);
         ctx.lineDashOffset = -dashOffset;
         ctx.beginPath();
-        ctx.moveTo(deskPos.x, deskPos.y - 10);
+        ctx.moveTo(deskPos.x + 5, deskPos.y - 10);
         ctx.lineTo(cloudPos.x, cloudPos.y + 30);
         ctx.stroke();
         ctx.restore();
@@ -554,7 +556,7 @@ export default function MiniGame() {
         ctx.lineDashOffset = -dashOffset; // reverse direction by flipping the sign
         ctx.beginPath();
         ctx.moveTo(cloudPos.x + 10, cloudPos.y + 30);
-        ctx.lineTo(deskPos.x + 10, deskPos.y - 10);
+        ctx.lineTo(deskPos.x + 15, deskPos.y - 10);
         ctx.stroke();
         ctx.restore();
 
@@ -577,8 +579,8 @@ export default function MiniGame() {
         ctx.fillRect(sx + smartphone.width * TILE_SIZE / 2 - 8, sy + smartphone.height * TILE_SIZE - 40, 16, 4);
         ctx.beginPath();
         ctx.arc(
-          sx + smartphone.width * TILE_SIZE - 6 + shake, // <--- Add shake here
-          sy + 12,
+          sx + smartphone.width * TILE_SIZE - 6, // <--- Add shake here
+          sy + 12 + shake,
           8,
           0,
           2 * Math.PI
@@ -588,7 +590,7 @@ export default function MiniGame() {
         ctx.font = "bold 12px sans-serif";
         ctx.fillStyle = "#fff";
         ctx.textAlign = "center";
-        ctx.fillText("1", sx + smartphone.width * TILE_SIZE - 6 + shake, sy + 16);
+        ctx.fillText("1", sx + smartphone.width * TILE_SIZE - 6, sy + 16 + shake);
         setShowResearcherExperience(true);
       } else {
         setShowResearcherExperience(false);
@@ -602,13 +604,34 @@ export default function MiniGame() {
       }
       
       // Draw Mario (grey)
+      const marioScreenX = (mario.current.x - camX) * TILE_SIZE - 20;
+      const marioScreenY = mario.current.y * TILE_SIZE - 20;
+      const w = mario.current.width * TILE_SIZE * 2;
+      const h = mario.current.height * TILE_SIZE * 2;
+
+      // Body (big)
       ctx.fillStyle = "#888";
-      ctx.fillRect(
-        (mario.current.x - camX) * TILE_SIZE,
-        mario.current.y * TILE_SIZE,
-        mario.current.width * TILE_SIZE,
-        mario.current.height * TILE_SIZE
-      );
+      ctx.fillRect(marioScreenX + w * 0.23, marioScreenY + h * 0.43, w * 0.54, h * 0.37);
+
+      // Head (big rectangle)
+      ctx.fillStyle = "#bbb";
+      ctx.fillRect(marioScreenX + w * 0.28, marioScreenY + h * 0.13, w * 0.44, h * 0.3);
+
+      // Left leg
+      ctx.fillStyle = "#666";
+      ctx.fillRect(marioScreenX + w * 0.28, marioScreenY + h * 0.80, w * 0.13, h * 0.18);
+
+      // Right leg
+      ctx.fillStyle = "#666";
+      ctx.fillRect(marioScreenX + w * 0.59, marioScreenY + h * 0.80, w * 0.13, h * 0.18);
+
+      // Left arm
+      ctx.fillStyle = "#aaa";
+      ctx.fillRect(marioScreenX + w * 0.13, marioScreenY + h * 0.48, w * 0.13, h * 0.18);
+
+      // Right arm
+      ctx.fillStyle = "#aaa";
+      ctx.fillRect(marioScreenX + w * 0.74, marioScreenY + h * 0.48, w * 0.13, h * 0.18);
     }
 
     function update(dt: number) {
@@ -777,6 +800,7 @@ export default function MiniGame() {
     fontSize: "0.7rem",
     pointerEvents: "none",
     userSelect: "none",
+    textAlign: "center"
   };
 
   return (
@@ -795,27 +819,47 @@ export default function MiniGame() {
       />
       {showInstructions && (
         <div style={instructionStyle}>
-          Move or jump using "WASD" to explore my world!
+          Move or jump using "WASD" to explore!
         </div>
       )}
       {showEngineerExperience && (
         <div style={instructionStyle}>
-          💻 AWS Software Engineer 💻 
+          <div>
+          💻 AWS Software Engineer 💻
+          </div>
+          <div>
+          AWS EUC Observability Infrastructure
+          </div>
         </div>
       )}
       {showResearcherExperience && (
         <div style={instructionStyle}>
+          <div>
           📋 HCI Researcher 📋
+          </div>
+          <div>
+          Context-Aware Mobile Computing
+          </div>
         </div>
       )}
       {showSnowboarder && (
         <div style={instructionStyle}>
+          <div>
           🏂 Snowboard Lover 🏂
+          </div>
+          <div>
+            Meet me at the top of the snow mountain!
+          </div>
         </div>
       )}
       {showMusic && (
         <div style={instructionStyle}>
-          🎵 Music Lover 🎵
+          <div>
+          🎵 Music Writer & Producer 🎵
+          </div>
+          <div>
+            My first song coming soon!
+          </div>
         </div>
       )}
       {deskOverlay === "eng" && (
