@@ -404,6 +404,12 @@ export default function MiniGame() {
   const objectsRef = useRef<GameObject[]>(getObjects());
   const snowboardState = useRef<"side" | "bottom" | "up" | null>(null);
 
+  // --- snowboard spin state ---
+  const snowboardSpin = useRef<{ spinning: boolean; progress: number }>({
+    spinning: false,
+    progress: 0,
+  });
+
   const [deskOverlay, setDeskOverlay] = useState<"eng" | "res" | null>(null);
   const [showInstructions, setShowInstructions] = useState(true);
   const [showEngineerExperience, setShowEngineerExperience] = useState(false);
@@ -429,13 +435,10 @@ export default function MiniGame() {
     const deskLab = objectsRef.current.find(o => o.type === "desk" && o.x > 10)!;
     const computerOnDesk = objectsRef.current.find(o => o.type === "computer")!;
     const cloud = objectsRef.current.find(o => o.type === "cloud");
-    // Find the computer-in-cloud "screen" position
-    // We'll visually connect: (computer on desk) <-> (computer in cloud)
 
-    // Helper: get computer "screen" center
     function getComputerScreen(obj: GameObject, camX: number) {
+      // ...unchanged...
       if (obj.type === "computer") {
-        // Desk computer
         const sx = (obj.x - camX) * TILE_SIZE;
         const sy = obj.y * TILE_SIZE;
         return {
@@ -444,8 +447,6 @@ export default function MiniGame() {
         };
       }
       if (obj.type === "cloud") {
-        // Computer in cloud is drawn at baseX+60, baseY+24
-        // width: 0.82 * TILE_SIZE, height: 0.63 * TILE_SIZE (as in drawBigComputer)
         const sx = (obj.x - camX) * TILE_SIZE + 60;
         const sy = obj.y * TILE_SIZE + 24;
         return {
@@ -457,6 +458,7 @@ export default function MiniGame() {
     }
 
     function getWorld(x: number) {
+      // ...unchanged...
       const worldIdx = Math.floor(x / WORLD_SIZE);
       return WORLD_THEMES[Math.min(worldIdx, WORLD_THEMES.length - 1)];
     }
@@ -467,6 +469,21 @@ export default function MiniGame() {
       const mountainStart = obj.x;
       const mountainEnd = obj.x + obj.width;
       return mario.current.x < mountainEnd &&  mario.current.x > mountainStart && mario.current.y < 8.0;
+    }
+
+    // --- Helper: is Mario close to mountain peak? ---
+    function isNearMountainPeak(): boolean {
+      const obj = objectsRef.current.find(o => o.type === "mountain");
+      if (!obj) return false;
+      const mountainStart = obj.x;
+      const mountainEnd = obj.x + obj.width;
+      const mountainPeakX = (mountainStart + mountainEnd) / 2;
+      const margin = 1.0; // within 1 tile of peak
+      const centerX = mario.current.x + mario.current.width / 2;
+      return (
+        mario.current.onMountain &&
+        Math.abs(centerX - mountainPeakX) < margin
+      );
     }
 
     function draw() {
@@ -504,39 +521,48 @@ export default function MiniGame() {
         obj.draw(ctx, camX);
       }
 
-      // Draw snowboard if on mountain and moving
-      if (mario.current.onMountain && snowboardState.current) {
-        const mx = mario.current.x;
-        const my = mario.current.y;
-        const sx = (mx - camX) * TILE_SIZE;
-        const sy = my * TILE_SIZE;
+      // Draw snowboard: spinning if needed, otherwise as usual
+      const mx = mario.current.x;
+      const my = mario.current.y;
+      const sx = (mx - camX) * TILE_SIZE;
+      const sy = my * TILE_SIZE;
+
+      // --- Spinning snowboard effect ---
+      if (snowboardSpin.current.spinning) {
+        // Spinning: use scaleX for y-axis rotation
+        const angle = snowboardSpin.current.progress * 4 * Math.PI; // 0 to 2π
+        const xScale = Math.cos(angle);
+        ctx.save();
+        ctx.translate(
+          sx + mario.current.width * TILE_SIZE / 2,
+          sy + mario.current.height * TILE_SIZE + 2
+        );
+        ctx.scale(xScale, 1); // fake y-rotation!
+        drawSnowboard(ctx, 0, 0, false); // centered
+        ctx.restore();
+      } else if (mario.current.onMountain && snowboardState.current) {
+        // Old logic, only if not spinning
         if (snowboardState.current === "side") {
           drawSnowboard(ctx, sx - 6, sy + mario.current.height * TILE_SIZE / 2, true);
         } else if (snowboardState.current === "bottom") {
-          drawSnowboard(ctx, sx + mario.current.width * TILE_SIZE / 2, sy + mario.current.height * TILE_SIZE + 2, false);
+          drawSnowboard(ctx, sx + mario.current.width * TILE_SIZE / 2, sy + mario.current.height * TILE_SIZE - 2, false);
         } else if (snowboardState.current === "up") {
-          drawSnowboard(ctx, sx + mario.current.width * TILE_SIZE / 2, sy + mario.current.height * TILE_SIZE - 10, false);
+          drawSnowboard(ctx, sx + mario.current.width * TILE_SIZE / 2, sy + mario.current.height * TILE_SIZE - 2, false);
         }
       }
 
       // --- Draw streaming lines if Mario is on office desk ---
       if (isOnDesk(mario.current, deskTech) && cloud) {
-        // Get desk computer and cloud computer screen center in canvas coordinates
+        // ...unchanged...
         const deskPos = getComputerScreen(computerOnDesk, camX);
         const cloudPos = getComputerScreen(cloud, camX);
-
-        // Draw dash-dotted red lines (bi-directional)
         ctx.save();
         ctx.strokeStyle = "#e74c3c";
         ctx.lineWidth = 2.5;
-        ctx.setLineDash([10, 8]); // dash, gap, dot, gap
-
-        // Animate dash offset using performance.now()
-        const dashAnimSpeed = 60; // smaller=faster (ms per px of offset)
+        ctx.setLineDash([10, 8]);
+        const dashAnimSpeed = 60;
         const now = performance.now();
-        const dashOffset = (now / dashAnimSpeed) % 18; // 18 = sum of [10,8] below
-
-        // 1. Desk -> Cloud (moving dashes)
+        const dashOffset = (now / dashAnimSpeed) % 18;
         ctx.save();
         ctx.strokeStyle = "#e74c3c";
         ctx.lineWidth = 2.5;
@@ -547,22 +573,17 @@ export default function MiniGame() {
         ctx.lineTo(cloudPos.x, cloudPos.y + 30);
         ctx.stroke();
         ctx.restore();
-
-        // 2. Cloud -> Desk (moving dashes, opposite direction)
         ctx.save();
         ctx.strokeStyle = "#e74c3c";
         ctx.lineWidth = 2.5;
         ctx.setLineDash([10, 8]);
-        ctx.lineDashOffset = -dashOffset; // reverse direction by flipping the sign
+        ctx.lineDashOffset = -dashOffset;
         ctx.beginPath();
         ctx.moveTo(cloudPos.x + 10, cloudPos.y + 30);
         ctx.lineTo(deskPos.x + 15, deskPos.y - 10);
         ctx.stroke();
         ctx.restore();
-
-        // setShowEngineerExperience
         setShowEngineerExperience(true);
-
         ctx.restore();
       } else {
         setShowEngineerExperience(false);
@@ -570,6 +591,7 @@ export default function MiniGame() {
 
       // Draw red dot if needed
       if (isOnDesk(mario.current, deskLab)) {
+        // ...unchanged...
         const smartphone = objectsRef.current.find(o => o.type === "smartphone")!;
         const sx = (smartphone.x - camX) * TILE_SIZE;
         const sy = smartphone.y * TILE_SIZE;
@@ -579,7 +601,7 @@ export default function MiniGame() {
         ctx.fillRect(sx + smartphone.width * TILE_SIZE / 2 - 8, sy + smartphone.height * TILE_SIZE - 40, 16, 4);
         ctx.beginPath();
         ctx.arc(
-          sx + smartphone.width * TILE_SIZE - 6, // <--- Add shake here
+          sx + smartphone.width * TILE_SIZE - 6,
           sy + 12 + shake,
           8,
           0,
@@ -603,35 +625,65 @@ export default function MiniGame() {
         setShowMusic(false);
       }
       
-      // Draw Mario (grey)
+      // Draw Mario (grey, unchanged)
       const marioScreenX = (mario.current.x - camX) * TILE_SIZE - 20;
       const marioScreenY = mario.current.y * TILE_SIZE - 20;
       const w = mario.current.width * TILE_SIZE * 2;
       const h = mario.current.height * TILE_SIZE * 2;
 
-      // Body (big)
-      ctx.fillStyle = "#888";
-      ctx.fillRect(marioScreenX + w * 0.23, marioScreenY + h * 0.43, w * 0.54, h * 0.37);
+if (snowboardSpin.current.spinning) {
+  const angle = snowboardSpin.current.progress * 4 * Math.PI; // or 2 * Math.PI for exactly 360°
+  const xScale = Math.cos(angle);
 
-      // Head (big rectangle)
-      ctx.fillStyle = "#bbb";
-      ctx.fillRect(marioScreenX + w * 0.28, marioScreenY + h * 0.13, w * 0.44, h * 0.3);
+  // Center for spin: use Mario's center
+  ctx.save();
+  ctx.translate(
+    marioScreenX + w / 2,
+    marioScreenY + h / 2
+  );
+  ctx.scale(xScale, 1);
 
-      // Left leg
-      ctx.fillStyle = "#666";
-      ctx.fillRect(marioScreenX + w * 0.28, marioScreenY + h * 0.80, w * 0.13, h * 0.18);
+  // Now draw Mario centered at (0, 0)
+  // (Head/body/arms/legs, but their positions must be relative to (-w/2, -h/2))
+  ctx.fillStyle = "#888";
+  ctx.fillRect(-w/2 + w * 0.23, -h/2 + h * 0.43, w * 0.54, h * 0.37);
 
-      // Right leg
-      ctx.fillStyle = "#666";
-      ctx.fillRect(marioScreenX + w * 0.59, marioScreenY + h * 0.80, w * 0.13, h * 0.18);
+  ctx.fillStyle = "#bbb";
+  ctx.fillRect(-w/2 + w * 0.28, -h/2 + h * 0.13, w * 0.44, h * 0.3);
 
-      // Left arm
-      ctx.fillStyle = "#aaa";
-      ctx.fillRect(marioScreenX + w * 0.13, marioScreenY + h * 0.48, w * 0.13, h * 0.18);
+  ctx.fillStyle = "#666";
+  ctx.fillRect(-w/2 + w * 0.28, -h/2 + h * 0.80, w * 0.13, h * 0.18);
 
-      // Right arm
-      ctx.fillStyle = "#aaa";
-      ctx.fillRect(marioScreenX + w * 0.74, marioScreenY + h * 0.48, w * 0.13, h * 0.18);
+  ctx.fillStyle = "#666";
+  ctx.fillRect(-w/2 + w * 0.59, -h/2 + h * 0.80, w * 0.13, h * 0.18);
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillRect(-w/2 + w * 0.13, -h/2 + h * 0.48, w * 0.13, h * 0.18);
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillRect(-w/2 + w * 0.74, -h/2 + h * 0.48, w * 0.13, h * 0.18);
+
+  ctx.restore();
+} else {
+  // Normal Mario drawing
+  ctx.fillStyle = "#888";
+  ctx.fillRect(marioScreenX + w * 0.23, marioScreenY + h * 0.43, w * 0.54, h * 0.37);
+
+  ctx.fillStyle = "#bbb";
+  ctx.fillRect(marioScreenX + w * 0.28, marioScreenY + h * 0.13, w * 0.44, h * 0.3);
+
+  ctx.fillStyle = "#666";
+  ctx.fillRect(marioScreenX + w * 0.28, marioScreenY + h * 0.80, w * 0.13, h * 0.18);
+
+  ctx.fillStyle = "#666";
+  ctx.fillRect(marioScreenX + w * 0.59, marioScreenY + h * 0.80, w * 0.13, h * 0.18);
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillRect(marioScreenX + w * 0.13, marioScreenY + h * 0.48, w * 0.13, h * 0.18);
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillRect(marioScreenX + w * 0.74, marioScreenY + h * 0.48, w * 0.13, h * 0.18);
+}
     }
 
     function update(dt: number) {
@@ -640,13 +692,11 @@ export default function MiniGame() {
 
       if (onMountain) {
         mario.current.onMountain = true;
-        let speed = 0;
         let left = keys.current["a"] || keys.current["A"];
         let right = keys.current["d"] || keys.current["D"];
         let up = keys.current["w"] || keys.current["W"];
 
         const isLeftOfPeak = centerX <= (SNOW_START + SNOW_END) / 2;
-        const isRightOfPeak = !isLeftOfPeak;
 
         if (left && !right) {
           if (isLeftOfPeak) {
@@ -655,7 +705,7 @@ export default function MiniGame() {
             snowboardState.current = "side";
           }
         } else if (right && !left) {
-          if (isRightOfPeak) {
+          if (!isLeftOfPeak) {
             snowboardState.current = "bottom";
           } else {
             snowboardState.current = "side";
@@ -677,7 +727,21 @@ export default function MiniGame() {
       else mario.current.vx = 0;
 
       const wPressed = keys.current["w"] || keys.current["W"];
-      if (wPressed && mario.current.onGround && !jumpHeld.current) {
+
+      // --- SPIN LOGIC: start if jumping near mountain peak ---
+      if (
+        wPressed &&
+        mario.current.onGround &&
+        !jumpHeld.current &&
+        isNearMountainPeak()
+      ) {
+        mario.current.vy = -0.32;
+        mario.current.onGround = false;
+        jumpHeld.current = true;
+        // Start spin
+        snowboardSpin.current.spinning = true;
+        snowboardSpin.current.progress = 0;
+      } else if (wPressed && mario.current.onGround && !jumpHeld.current) {
         mario.current.vy = -0.32;
         mario.current.onGround = false;
         jumpHeld.current = true;
@@ -731,6 +795,19 @@ export default function MiniGame() {
       }
 
       mario.current.y = Math.min(mario.current.y, LEVEL_HEIGHT - mario.current.height);
+
+      // --- Advance the spin if spinning ---
+      if (snowboardSpin.current.spinning) {
+        if (!mario.current.onGround) {
+          snowboardSpin.current.progress += dt / 500; // spin duration (ms), adjust as needed
+          if (snowboardSpin.current.progress > 1) {
+            snowboardSpin.current.progress = 1;
+          }
+        } else {
+          snowboardSpin.current.spinning = false;
+          snowboardSpin.current.progress = 0;
+        }
+      }
     }
 
     function loop(now: number) {
@@ -766,7 +843,8 @@ export default function MiniGame() {
     };
   }, [showInstructions]);
 
-  // ... all overlay code unchanged ...
+  // ...all overlay/UI code unchanged...
+  // (no changes needed below this line)
   const canvasWidth = TILE_SIZE * VIEWPORT_WIDTH;
   const overlayBaseStyle: React.CSSProperties = {
     position: "absolute",
@@ -828,7 +906,7 @@ export default function MiniGame() {
           💻 AWS Software Engineer 💻
           </div>
           <div>
-          AWS EUC Observability Infrastructure
+          Developed EUC AI-powered Observability Solution
           </div>
         </div>
       )}
@@ -838,7 +916,7 @@ export default function MiniGame() {
           📋 HCI Researcher 📋
           </div>
           <div>
-          Context-Aware Mobile Computing
+          Interested in Context-Aware Intelligent Systems
           </div>
         </div>
       )}
@@ -855,7 +933,7 @@ export default function MiniGame() {
       {showMusic && (
         <div style={instructionStyle}>
           <div>
-          🎵 Music Writer & Producer 🎵
+          🎵 Song Writer & Producer 🎵
           </div>
           <div>
             My first song coming soon!

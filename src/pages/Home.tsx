@@ -17,7 +17,7 @@ export default function Home() {
         Passionate about building human-centered computing systems!
       </p>
 
-      <p className="text-lg mb-8">
+      <p className="text-lg mb-10">
         Enjoy snowboarding and music writing in my free time!
       </p>
       
