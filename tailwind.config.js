@@ -8,8 +8,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        accent: '#6EE7B7', // Soft teal accent
-        bg: '#18181B',     // Almost-black background
+        accent: '#ffab74', // Soft teal accent
+        bg: '#1c1b1b',     // Almost-black background
         fg: '#F4F4F5',     // Off-white for text
         muted: '#A1A1AA',  // Muted gray for secondary text
       },
